@@ -9,7 +9,7 @@ use mem::{
     bitmap_allocator::BitMapAllocator,
     error::FrameAllocatorError,
     map,
-    paging::{ptm::PageTableManager, PageEntryFlags, PageTable},
+    paging::{flag, ptm::PageTableManager, PageTable},
     KERNEL_CODE_VIRTUAL, KERNEL_STACK_SIZE, KERNEL_STACK_VIRTUAL, PAGE_SIZE, PAS_VIRTUAL,
     PAS_VIRTUAL_MAX,
 };
@@ -116,17 +116,15 @@ pub(crate) fn initialize_address_space(
                 ),
                 // map kernel data same as available PAS
                 NereusMemoryType::KernelData => (PAS_VIRTUAL, desc.phys_start, nx_flags),
-                NereusMemoryType::KernelCode => (
-                    KERNEL_CODE_VIRTUAL,
-                    desc.phys_start,
-                    PageEntryFlags::default(),
-                ),
+                NereusMemoryType::KernelCode => {
+                    (KERNEL_CODE_VIRTUAL, desc.phys_start, flag::DEFAULT_EXEC)
+                }
                 // loader data, code pages will later be reclaimed by the kernel - must be
                 // identity-mapped for now
-                NereusMemoryType::Loader => (0, desc.phys_start, PageEntryFlags::default()),
+                NereusMemoryType::Loader => (0, desc.phys_start, flag::DEFAULT_EXEC),
                 // acpi table will later be reclaimed by the kernel - must be identity-mapped for
                 // now
-                NereusMemoryType::AcpiData => (0, desc.phys_start, PageEntryFlags::default()),
+                NereusMemoryType::AcpiData => (0, desc.phys_start, flag::DEFAULT_DATA),
             };
 
             (0..desc.num_pages).try_for_each(|page| {

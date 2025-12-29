@@ -1,11 +1,14 @@
 use core::{arch::asm, ptr::NonNull};
 
 use crate::{
-    bitmap_allocator::BitMapAllocator, error::FrameAllocatorError, paging::PageEntry,
     PhysicalAddress, VirtualAddress,
+    bitmap_allocator::BitMapAllocator,
+    error::FrameAllocatorError,
+    paging::PageEntryFlags,
+    paging::{PageEntry, flag},
 };
 
-use super::{index::PageMapIndexer, PageEntryFlags, PageTable};
+use super::{PageTable, index::PageMapIndexer};
 
 /// Manages Page Table Mappings
 #[derive(Debug)]
@@ -51,9 +54,9 @@ impl PageTableManager {
     /// Attempts to get NX-PageEntryFlags if NX is configured.
     pub fn nx_flags(&self) -> PageEntryFlags {
         if self.nx() {
-            PageEntryFlags::default_nx()
+            flag::DEFAULT_DATA
         } else {
-            PageEntryFlags::default()
+            flag::DEFAULT_EXEC
         }
     }
 
@@ -232,7 +235,7 @@ impl PageTableMappings {
     ) -> Result<(), FrameAllocatorError> {
         let indexer = PageMapIndexer::new(virtual_address);
         let pml4 = self.pml4_virtual();
-        let user = flags.contains(PageEntryFlags::USER_SUPER);
+        let user = flags.contains(PageEntryFlags::USER_ACCESSIBLE);
 
         // Map Level 3
         let page_map_level3 = self.get_or_create_next_table(pml4, indexer.pdp_i(), pmm, user)?;
@@ -340,8 +343,8 @@ impl PageTableMappings {
 
         if entry.flags().contains(PageEntryFlags::PRESENT) {
             // path to entry user accessible as well
-            if user && !entry.flags().contains(PageEntryFlags::USER_SUPER) {
-                entry.set_flags(entry.flags() | PageEntryFlags::USER_SUPER);
+            if user && !entry.flags().contains(PageEntryFlags::USER_ACCESSIBLE) {
+                entry.set_flags(entry.flags() | PageEntryFlags::USER_ACCESSIBLE);
             }
 
             Ok(
@@ -360,9 +363,9 @@ impl PageTableMappings {
             entry.set_address(new_page);
             entry.set_flags(
                 PageEntryFlags::PRESENT
-                    | PageEntryFlags::READ_WRITE
+                    | PageEntryFlags::WRITABLE
                     | if user {
-                        PageEntryFlags::USER_SUPER
+                        PageEntryFlags::USER_ACCESSIBLE
                     } else {
                         PageEntryFlags::empty()
                     },

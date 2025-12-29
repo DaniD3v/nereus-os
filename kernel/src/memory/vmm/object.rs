@@ -57,17 +57,17 @@ impl From<VmFlags> for PageEntryFlags {
         let mut flags = PageEntryFlags::PRESENT;
 
         if value.contains(VmFlags::WRITE) {
-            flags |= PageEntryFlags::READ_WRITE;
+            flags |= PageEntryFlags::WRITABLE;
         }
         if !value.contains(VmFlags::EXECUTABLE) {
-            flags |= PageEntryFlags::EXECUTE_DISABLE;
+            flags |= PageEntryFlags::NO_EXECUTE;
         }
         if value.contains(VmFlags::USER) {
-            flags |= PageEntryFlags::USER_SUPER;
+            flags |= PageEntryFlags::USER_ACCESSIBLE;
         }
         if value.contains(VmFlags::NO_CACHE) {
             // todo: maybe add PAT configuration for strong ordering
-            flags |= PageEntryFlags::CACHE_DISABLED;
+            flags |= PageEntryFlags::NO_CACHE;
         }
         flags
     }
